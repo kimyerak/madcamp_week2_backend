@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 
+
 @Module({
   imports: [
     MongooseModule.forRoot('mongodb://0.0.0.0:27017/mydatabase',
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module';
               },
             }),
     UsersModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],
