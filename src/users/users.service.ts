@@ -29,34 +29,6 @@ async create(user: User): Promise<User> {
   }
 
 
-
-
-//   async addTodo(name: string, date: Date, todo: Todo) {
-//     const userDayTodo = await this.userDayTodoModel.findOne({ name, date }).exec();
-//     console.log(userDayTodo);
-//     if (userDayTodo) {
-//       userDayTodo.todos.push({type: todo.type,
-//                                 content: todo.content,
-//                                 complete: todo.complete,});
-//       await userDayTodo.save();
-//     } else {
-//       const newUserDayTodo = new this.userDayTodoModel({
-//         name,
-//         date,
-//         todos: [todo],
-//       });
-//       await newUserDayTodo.save();
-//     }
-//   }
-//
-//    async createUserDayTodo(userDayTodolist: UserDayTodo[]): Promise<void> {
-//         for (const userDayTodo of userDayTodolist) {
-//               for (const todo of userDayTodo.todos) {
-//                 await this.addTodo(userDayTodo.name, userDayTodo.date, todo);
-//               }
-//             }
-//       }
-
 async addOrUpdateTodo(
     name: string,
     date: Date,
@@ -85,15 +57,96 @@ async addOrUpdateTodo(
       throw new NotFoundException('Todo not found');
     }
   }
-async getTodosByDate(name: string, date: Date): Promise<Todo[]> {
 
+//1. 일별
+async getTodosByDate(name: string, date: Date): Promise<Todo[]> {
   const userDayTodo = await this.userDayTodoModel.findOne({ name, date }).exec();
   if (userDayTodo) {
-    return userDayTodo.todos;
-  } else {
+     return userDayTodo.todos.map(todo => ({
+            type: todo.type,
+                    content: todo.content,
+                    complete: todo.complete,
+                    date: userDayTodo.date
+          }));
+        } else {
     return [];
   }
 }
 
+async getAllTodos(name: string): Promise<Record<string, Todo[]>> {
+    const userDayTodos = await this.userDayTodoModel.find({ name }).exec();
+    const todosByDate: Record<string, Todo[]> = {};
+
+    userDayTodos.forEach(userDayTodo => {
+      const dateKey = userDayTodo.date.toISOString().split('T')[0]; // 날짜만 문자열로 변환
+      todosByDate[dateKey] = userDayTodo.todos;
+    });
+
+    return todosByDate;
+  }
+
+
+async updateTodo(name: string, date: Date, content: string, complete: boolean): Promise<void> {
+  const userDayTodo = await this.userDayTodoModel.findOne({ name, date }).exec();
+  if (userDayTodo) {
+    const todo = userDayTodo.todos.find(todo => todo.content === content);
+    if (todo) {
+      todo.complete = complete;
+      await userDayTodo.save();
+    } else {
+      throw new NotFoundException('Todo not found');
+    }
+  } else {
+    throw new NotFoundException('Todo list not found');
+  }
+}
+
+
+//2. 주별
+async getTodosByWeek(name: string, startDate: Date, endDate: Date): Promise<Todo[]> {
+  const userDayTodos = await this.userDayTodoModel.find({
+    name,
+    date: {
+      $gte: startDate,
+      $lte: endDate,
+    },
+  }).exec();
+
+   const todos = userDayTodos.flatMap(userDayTodo =>
+      userDayTodo.todos.map(todo => ({
+        type: todo.type,
+                content: todo.content,
+                complete: todo.complete,
+                date: userDayTodo.date
+      }))
+    );
+
+      return todos;
+}
+
+//3. 월별
+async getTodosByMonth(name: string, year: number, month: number): Promise<Todo[]> {
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+
+  const userDayTodos = await this.userDayTodoModel.find({
+    name,
+    date: {
+      $gte: startDate,
+      $lte: endDate,
+    },
+  }).exec();
+
+const todos = userDayTodos.flatMap(userDayTodo =>
+      userDayTodo.todos.map(todo => ({
+        type: todo.type,
+                content: todo.content,
+                complete: todo.complete,
+                date: userDayTodo.date
+      }))
+    );
+
+  return todos;
+}
 
 }
