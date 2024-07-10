@@ -11,6 +11,8 @@ export class Todo {
 
   @Prop({ required: true })
   complete: boolean;
+
+  date?: Date; // 추가된 필드
 }
 
 export const TodoSchema = SchemaFactory.createForClass(Todo);
